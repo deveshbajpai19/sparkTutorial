@@ -1,6 +1,12 @@
 package com.sparkTutorial.rdd.airports;
 
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+
 public class AirportsInUsaProblem {
+
+    private static final String DELIMITER = ",";
 
     public static void main(String[] args) throws Exception {
 
@@ -16,5 +22,40 @@ public class AirportsInUsaProblem {
            "Dowagiac Municipal Airport", "Dowagiac"
            ...
          */
+
+        SparkConf conf = new SparkConf().setAppName("airports-self").setMaster("local[2]");  //locally with 2 cores
+
+        //connection to the spark cluster
+        JavaSparkContext javaSparkContext = new JavaSparkContext(conf);
+
+        JavaRDD<String> lines = javaSparkContext.textFile("in/airports.text");
+
+        JavaRDD<String> linesUSA = lines.filter(line -> line.split(DELIMITER)[3].equals("\"United States\""));
+
+        JavaRDD<String> linesResult = linesUSA.map(line -> {
+
+                String[] lineComponents = line.split(DELIMITER);
+
+                StringBuilder result = new StringBuilder();
+                result.append(lineComponents[1]); //airport name
+                result.append(DELIMITER);
+                result.append(lineComponents[2]); //airport city
+
+                return result.toString();
+
+
+        });
+
+        //.collect() can be an intensive operation hence only good for prototyping purposes
+        for(String line: linesResult.collect()) {
+            System.out.println(line);
+        }
+
+
+        linesResult.saveAsTextFile("out/airports_in_usa_self.txt");
+
     }
+
+
+
 }
