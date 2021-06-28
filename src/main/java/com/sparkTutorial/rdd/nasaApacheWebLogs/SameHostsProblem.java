@@ -1,5 +1,9 @@
 package com.sparkTutorial.rdd.nasaApacheWebLogs;
 
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+
 public class SameHostsProblem {
 
     public static void main(String[] args) throws Exception {
@@ -19,5 +23,35 @@ public class SameHostsProblem {
 
            Make sure the head lines are removed in the resulting RDD.
          */
+
+        SparkConf conf = new SparkConf().setAppName("nasa-self").setMaster("local[2]");  //locally with 2 cores
+
+        //connection to the spark cluster
+        JavaSparkContext javaSparkContext = new JavaSparkContext(conf);
+
+        JavaRDD<String> lines19950701 = readHostsWithoutHeader(javaSparkContext, "in/nasa_19950701.tsv");
+        JavaRDD<String> lines19950801 = readHostsWithoutHeader(javaSparkContext, "in/nasa_19950801.tsv");
+
+        JavaRDD<String> intersectHostNames1995 = lines19950701
+                .intersection(lines19950801);
+
+        System.out.println("Output length: "+intersectHostNames1995.count());
+
+        for(String line: intersectHostNames1995.collect()){
+            System.out.println(line);
+        }
+
+        intersectHostNames1995.saveAsTextFile("out/nasa_logs_same_hosts_self.csv");
+
+    }
+
+    private static JavaRDD<String> readHostsWithoutHeader(JavaSparkContext javaSparkContext, String filePath) {
+
+        JavaRDD<String> lines = javaSparkContext.textFile(filePath);
+
+        return lines
+                .map(line -> line.split("\t")[0])
+                .filter(line -> !line.equals("host"));
+
     }
 }
