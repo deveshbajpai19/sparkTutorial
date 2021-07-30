@@ -1,6 +1,18 @@
 package com.sparkTutorial.sparkSql;
 
 
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.spark.sql.DataFrameReader;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.RelationalGroupedDataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
+
+import static org.apache.spark.sql.functions.avg;
+import static org.apache.spark.sql.functions.col;
+import static org.apache.spark.sql.functions.max;
+
 public class HousePriceProblem {
 
         /* Create a Spark program to read the house data from in/RealEstate.csv,
@@ -38,4 +50,37 @@ public class HousePriceProblem {
         |.............................................|
 
          */
+
+    private static final String PRICE = "Price";
+    private static final String PRICE_SQ_FT = "Price SQ Ft";
+    private static final String AVG_PRICE_SQ_FT = "avg(" + PRICE_SQ_FT + ")";
+    private static final String LOCATION = "Location";
+    private static final String DOUBLE_TYPE = "double";
+
+    public static void main(String[] args) {
+
+        Logger.getLogger("org").setLevel(Level.ERROR);
+        SparkSession session = SparkSession.builder().appName("HousePrice_self").master("local[1]").getOrCreate();
+
+        DataFrameReader dataFrameReader = session.read();
+
+        Dataset<Row> realEstateDataset = dataFrameReader.option("header","true").csv("in/RealEstate.csv");
+
+        //System.out.println("=== Print out schema ===");
+        //realEstateDataset.printSchema();
+
+        System.out.println("=== Cast the price and price sq-ft to double ===");
+        Dataset<Row> castedRealEstateDataset = realEstateDataset
+                .withColumn(PRICE, col(PRICE).cast(DOUBLE_TYPE))
+                .withColumn(PRICE_SQ_FT, col(PRICE_SQ_FT).cast(DOUBLE_TYPE));
+
+
+        //System.out.println("=== Print out schema ===");
+        //castedRealEstateDataset.printSchema();
+
+        RelationalGroupedDataset groupedDataset = castedRealEstateDataset.groupBy(col(LOCATION));
+
+        groupedDataset.agg(avg(PRICE_SQ_FT), max(PRICE)).orderBy(col(AVG_PRICE_SQ_FT).desc()).show();
+
+    }
 }
